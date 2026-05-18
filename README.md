@@ -35,44 +35,7 @@ Um workflow que simula o fluxo de aprovação de pedidos de e-commerce, **persis
 
 ### Diagrama do Fluxo
 
-```
-         INPUT
-           │
-           ▼
-  ┌─────────────────────┐
-  │   VerificarEstoque  │  Pass — JSONata computa estoque_disponivel
-  └──────────┬──────────┘
-             │
-             ▼
-       ┌───────────┐
-       │ TemEstoque│  Choice
-       └─────┬─────┘
-             │
-      ┌──────┴──────┐
-      │quantidade   │
-      │  <= 10?     │
-      └──────┬──────┘
-         SIM │                    NÃO
-             │                     │
-             ▼                     ▼
-  ┌───────────────────┐  ┌──────────────────────┐
-  │ ProcessarPagamento│  │    RegistrarRecusa    │
-  │ Pass — pagamento_id│  │  Task — DynamoDB     │
-  └─────────┬─────────┘  │  (status = RECUSADO) │
-            │            └──────────┬───────────┘
-            ▼                       │
-  ┌──────────────────┐              ▼
-  │   SalvarPedido   │   ┌──────────────────┐
-  │  Task — DynamoDB │   │  PedidoRecusado  │
-  │ (status=APROVADO)│   │      Fail        │
-  └─────────┬────────┘   └──────────────────┘
-            │
-            ▼
-  ┌──────────────────┐
-  │  PedidoAprovado  │
-  │     Succeed      │
-  └──────────────────┘
-```
+![Diagrama do Fluxo](images/diagrama-fluxo.png)
 
 ### Workflow Visual no Console AWS
 
