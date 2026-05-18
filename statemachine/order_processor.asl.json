@@ -1,0 +1,80 @@
+{
+  "Comment": "Processador de Pedidos - Demonstração AWS Step Functions + DynamoDB",
+  "QueryLanguage": "JSONata",
+  "StartAt": "VerificarEstoque",
+  "States": {
+    "VerificarEstoque": {
+      "Type": "Pass",
+      "Output": {
+        "pedido_id": "{% $states.input.pedido_id %}",
+        "produto": "{% $states.input.produto %}",
+        "quantidade": "{% $states.input.quantidade %}",
+        "cliente": "{% $states.input.cliente %}",
+        "estoque_disponivel": "{% $states.input.quantidade <= 10 %}",
+        "mensagem": "{% 'Estoque verificado para ' & $states.input.produto %}"
+      },
+      "Next": "TemEstoque"
+    },
+    "TemEstoque": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Condition": "{% $states.input.estoque_disponivel = true %}",
+          "Next": "ProcessarPagamento"
+        }
+      ],
+      "Default": "RegistrarRecusa"
+    },
+    "ProcessarPagamento": {
+      "Type": "Pass",
+      "Output": {
+        "pedido_id": "{% $states.input.pedido_id %}",
+        "produto": "{% $states.input.produto %}",
+        "cliente": "{% $states.input.cliente %}",
+        "status": "APROVADO",
+        "pagamento_id": "{% 'PAG-' & $states.input.pedido_id %}",
+        "mensagem": "Pedido processado com sucesso!"
+      },
+      "Next": "SalvarPedido"
+    },
+    "SalvarPedido": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Arguments": {
+        "TableName": "Pedidos",
+        "Item": {
+          "pedido_id":   { "S": "{% $states.input.pedido_id %}" },
+          "produto":     { "S": "{% $states.input.produto %}" },
+          "cliente":     { "S": "{% $states.input.cliente %}" },
+          "status":      { "S": "{% $states.input.status %}" },
+          "pagamento_id":{ "S": "{% $states.input.pagamento_id %}" },
+          "mensagem":    { "S": "{% $states.input.mensagem %}" }
+        }
+      },
+      "Next": "PedidoAprovado"
+    },
+    "RegistrarRecusa": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Arguments": {
+        "TableName": "Pedidos",
+        "Item": {
+          "pedido_id": { "S": "{% $states.input.pedido_id %}" },
+          "produto":   { "S": "{% $states.input.produto %}" },
+          "cliente":   { "S": "{% $states.input.cliente %}" },
+          "status":    { "S": "RECUSADO" },
+          "mensagem":  { "S": "Sem estoque disponivel" }
+        }
+      },
+      "Next": "PedidoRecusado"
+    },
+    "PedidoAprovado": {
+      "Type": "Succeed"
+    },
+    "PedidoRecusado": {
+      "Type": "Fail",
+      "Error": "SemEstoque",
+      "Cause": "Quantidade solicitada excede o estoque disponivel"
+    }
+  }
+}
